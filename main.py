@@ -11,11 +11,15 @@ clock = pygame.time.Clock()
 
 w_background = pygame.Surface((X, Y))
 w_hills = pygame.Surface((X, Y * 0.5))
-w_cars = pygame.Surface((X, Y))
+w_cars = pygame.Surface((X, Y * 0.4))
+
+w_cars.set_colorkey((255, 255, 255), pygame.RLEACCEL)
 
 running_game = True
 FPS = 60
 
+for i in range(1, 7):
+    exec(f'a{i} = pygame.transform.scale(pygame.image.load("a{i}.png").convert_alpha(), (X, Y))')
 
 sprite_background = pygame.image.load('background.png').convert_alpha()
 sprite_background = pygame.transform.scale(sprite_background, (X, Y))
@@ -28,14 +32,11 @@ sprite_ground = pygame.transform.scale(sprite_ground, (X, Y * 0.5))
 sprite_road = pygame.image.load('road5.png').convert_alpha()
 sprite_road = pygame.transform.scale(sprite_road, (X * 0.5, Y * 0.5))
 
-sprite_fon = pygame.image.load('fon.png').convert_alpha()
-sprite_fon = pygame.transform.scale(sprite_fon, (X, Y * 0.5))
-
-sprite_car11 = pygame.image.load('car.png').convert_alpha()
+sprite_car11 = pygame.image.load('car11.png').convert_alpha()
 sprite_car11 = pygame.transform.scale(sprite_car11, (X * 0.2, Y * 0.3))
-sprite_car12 = pygame.image.load('car.png').convert_alpha()
+sprite_car12 = pygame.image.load('car12.png').convert_alpha()
 sprite_car12 = pygame.transform.scale(sprite_car12, (X * 0.2, Y * 0.3))
-sprite_car13 = pygame.image.load('car.png').convert_alpha()
+sprite_car13 = pygame.image.load('car13.png').convert_alpha()
 sprite_car13 = pygame.transform.scale(sprite_car13, (X * 0.2, Y * 0.3))
 
 TEXTURES = {
@@ -46,7 +47,7 @@ CARS = []
 
 
 class Car:
-    def __init__(self, x, y, sprite, speed=2, max_speed=100, way=2, time=1):
+    def __init__(self, x, y, sprite, speed=2, max_speed=100, way=1, time=1):
         self.x, self.y = x, y
         self.sprite, self.speed, self.max_speed, self.way, self.time = sprite, speed, max_speed, way, time
 
@@ -67,19 +68,24 @@ class Car:
             self.x += x
             self.y += y
 
-        #w_hills.fill((57, random.randint(0, 255), 176))
         w_hills.blit(sprite_ground, (0, 0))
-        w_hills.blit(sprite_road, (X * 0.25, 0))
-        #w_cars.fill((184, random.randint(0, 255), 200))
+        # w_hills.blit(sprite_road, (X * 0.25, 0))
+
         w_cars.fill((255, 255, 255))
-        w_cars.set_alpha(128)
-        w_cars.blit(sprite_fon, (0, 0))
-        w_cars.blit(player.sprite[player.way - 1], (player.x, player.y))
+        w_cars.blit(player.sprite[player.way], (player.x, player.y))
+
         mw.blit(w_hills, (0, Y * 0.5))
         mw.blit(w_cars, (0, Y * 0.6))
+        pygame.display.flip()
 
     def set_speed(self, speed):
-        self.speed += speed
+        if self.speed + speed <= self.max_speed:
+            self.speed += speed
+        else:
+            self.speed = self.max_speed
+        if self.speed + speed < 1:
+            self.speed = 0
+        print(speed, self.speed)
 
     def set_max_speed(self, max_speed):
         self.max_speed = max_speed
@@ -120,8 +126,9 @@ def game():
     mw.blit(player.sprite[0], (X * 0.4, Y * 0.6))
 
     while running_game:
+        #print(clock.get_fps())
         if random.randint(0, 100) == 1:
-            CARS.append(Car(random.randint(0, X), random.randint(Y * 0.5, Y), random.randint(0, len(TEXTURES))))
+            CARS.append(Car(random.randint(int(X * 0.4), int(X * 0.6)), random.randint(0, int(Y * 0.2)), TEXTURES['car1']))
 
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -134,26 +141,35 @@ def game():
                 running_game = False
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            player.set_speed(player.speed / player.time)
-            player.move(0, 0)
 
-        elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            player.set_speed(-player.speed / player.time)
-            player.move(0, 0)
+        if keys:
+            if keys[pygame.K_w] or keys[pygame.K_UP]:
+                player.set_speed(player.speed / player.time / 10)
+                player.set_way(1)
+                player.move(0, 0)
 
-        elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            player.set_speed(-player.speed / player.time / 2)
-            player.set_way(1)
-            player.move(-10, 0)
+            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                player.set_speed(-player.speed / player.time / 10)
+                player.set_way(1)
+                player.move(0, 0)
 
-        elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            player.set_speed(-player.speed / player.time / 2)
-            player.set_way(3)
-            player.move(10, 0)
+            if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                player.set_speed(-player.speed / player.time / 2 / 10)
+                player.set_way(0)
+                player.move(-10, 0)
+
+            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                player.set_speed(-player.speed / player.time / 2 / 10)
+                player.set_way(2)
+                player.move(10, 0)
 
         else:
-            player.set_speed(-player.speed / player.time / 5)
+            player.set_speed(-player.speed / player.time / 50)
+            player.time = 1
+
+        '''for car in CARS:
+            w_cars.blit(car.sprite[car.way], (car.x, car.y))
+        mw.blit(w_cars, (0, Y * 0.6))'''
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -194,6 +210,16 @@ def pause():
         pygame.display.flip()
         clock.tick(FPS)
 
+    mw.blit(w_background, (x_background, y_background))
+    mw.blit(w_hills, (0, Y * 0.5))
+    mw.blit(w_cars, (0, Y * 0.6))
+
+
+def ride():
+    w_hills.blit(road.image, (0, 0))
+    w_hills.blit(sprite_road, (X * 0.25, 0))
+    road.update(player.speed)
+
 
 def turn(x):
     pass
@@ -205,5 +231,6 @@ def turn(x):
     mw.blit(w_cars, (0, Y * 0.6))'''
 
 
-player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 0, 150)
+player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 150)
+road = Animation([a1, a2, a3, a4, a5, a6], 2000)
 game()

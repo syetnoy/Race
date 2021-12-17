@@ -1,4 +1,4 @@
 # Race
 yandex project
 
-now: v0.3
+now: v0.4

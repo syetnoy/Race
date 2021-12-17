@@ -6,17 +6,18 @@ pygame.init()
 sizes = pygame.display.get_desktop_sizes()
 X, Y = sizes[0][0], sizes[0][1]
 mw = pygame.display.set_mode((X, Y), pygame.SRCALPHA)
-pygame.display.set_caption('race')
 clock = pygame.time.Clock()
 
 w_background = pygame.Surface((X, Y))
 w_hills = pygame.Surface((X, Y * 0.5))
 w_cars = pygame.Surface((X, Y * 0.4))
+w_cars.set_colorkey((0, 0, 0), pygame.RLEACCEL)
 
-w_cars.set_colorkey((255, 255, 255), pygame.RLEACCEL)
+s = pygame.Surface((X * 0.2, Y * 0.1))
 
 running_game = True
 FPS = 60
+k = 150
 
 for i in range(1, 7):
     exec(f'a{i} = pygame.transform.scale(pygame.image.load("a{i}.png").convert_alpha(), (X, Y))')
@@ -68,24 +69,32 @@ class Car:
             self.x += x
             self.y += y
 
-        w_hills.blit(sprite_ground, (0, 0))
-        # w_hills.blit(sprite_road, (X * 0.25, 0))
+        # w_hills.blit(sprite_ground, (0, 0))
+        w_hills.blit(sprite_road, (X * 0.25, 0))
 
-        w_cars.fill((255, 255, 255))
+        w_cars.fill((0, 0, 0))
         w_cars.blit(player.sprite[player.way], (player.x, player.y))
 
         mw.blit(w_hills, (0, Y * 0.5))
         mw.blit(w_cars, (0, Y * 0.6))
-        pygame.display.flip()
 
     def set_speed(self, speed):
         if self.speed + speed <= self.max_speed:
-            self.speed += speed
+            if self.speed < self.max_speed / 5:
+                self.speed += speed * 2
+            elif self.speed < self.max_speed / 4:
+                self.speed += speed * 1
+            elif self.speed < self.max_speed / 3:
+                self.speed += speed * 0.8
+            else:
+                self.speed += speed * 0.5
+
         else:
             self.speed = self.max_speed
+
         if self.speed + speed < 1:
-            self.speed = 0
-        print(speed, self.speed)
+            self.speed = 1
+        #print(speed, self.speed)
 
     def set_max_speed(self, max_speed):
         self.max_speed = max_speed
@@ -93,10 +102,18 @@ class Car:
     def set_way(self, way):
         self.way = way
 
+    def set_time(self, time):
+        self.time += time
+
 
 class Player:
-    def __init__(self):
-        pass
+    def __init__(self, id, x_road, y_road, distance=0):
+        self.id = id
+        self.x_road, self.y_road = x_road, y_road
+        self.distance = distance
+
+    def set_distance(self, distance):
+        self.distance += distance
 
 
 class Animation(pygame.sprite.Sprite):
@@ -122,8 +139,7 @@ def game():
     global running_game
 
     mw.blit(sprite_background, (0, 0))
-    mw.blit(sprite_road, (X * 0.3, Y * 0.5))
-    mw.blit(player.sprite[0], (X * 0.4, Y * 0.6))
+    flag = False
 
     while running_game:
         #print(clock.get_fps())
@@ -137,39 +153,55 @@ def game():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pause()
+
             if event.type == pygame.QUIT:
                 running_game = False
 
         keys = pygame.key.get_pressed()
 
-        if keys:
-            if keys[pygame.K_w] or keys[pygame.K_UP]:
-                player.set_speed(player.speed / player.time / 10)
-                player.set_way(1)
-                player.move(0, 0)
+        if keys[pygame.K_w] or keys[pygame.K_UP]:
+            player.set_speed(player.speed / (k * 1.5))
+            player.set_way(1)
+            player.move(0, 0)
+            player.set_time(0.16)
+            flag = True
 
-            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-                player.set_speed(-player.speed / player.time / 10)
-                player.set_way(1)
-                player.move(0, 0)
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+            player.set_speed(-player.speed / (k * 0.5))
+            player.set_way(1)
+            player.move(0, 0)
+            player.set_time(0.16)
+            flag = True
 
-            if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-                player.set_speed(-player.speed / player.time / 2 / 10)
-                player.set_way(0)
-                player.move(-10, 0)
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+            player.set_speed(-player.speed / (k * 2))
+            player.set_way(0)
+            player.move(-10, 0)
+            player.set_time(0.16)
+            flag = True
 
-            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-                player.set_speed(-player.speed / player.time / 2 / 10)
-                player.set_way(2)
-                player.move(10, 0)
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+            player.set_speed(-player.speed / (k * 2))
+            player.set_way(2)
+            player.move(10, 0)
+            player.set_time(0.16)
+            flag = True
 
-        else:
-            player.set_speed(-player.speed / player.time / 50)
+        if not flag:
+            player.set_speed(-player.speed / (k * 5))
             player.time = 1
+            player.set_way(1)
 
+        flag = False
         '''for car in CARS:
             w_cars.blit(car.sprite[car.way], (car.x, car.y))
         mw.blit(w_cars, (0, Y * 0.6))'''
+
+        ride()
+        s.fill((255, 255, 255))
+        speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} mp/h    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
+        s.blit(speedometer, (0, 0))
+        mw.blit(s, (0, Y * 0.9))
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -216,9 +248,11 @@ def pause():
 
 
 def ride():
+    road.update(player.speed)
     w_hills.blit(road.image, (0, 0))
     w_hills.blit(sprite_road, (X * 0.25, 0))
-    road.update(player.speed)
+    mw.blit(w_hills, (0, Y * 0.5))
+    mw.blit(w_cars, (0, Y * 0.6))
 
 
 def turn(x):
@@ -231,6 +265,6 @@ def turn(x):
     mw.blit(w_cars, (0, Y * 0.6))'''
 
 
-player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 150)
-road = Animation([a1, a2, a3, a4, a5, a6], 2000)
+player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 300)
+road = Animation([a1, a2, a3, a4, a5, a6], 1000)
 game()

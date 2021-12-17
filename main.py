@@ -86,6 +86,8 @@ class Car:
                 self.speed += speed * 1
             elif self.speed < self.max_speed / 3:
                 self.speed += speed * 0.8
+            elif self.speed > self.max_speed / 5 * 4:
+                self.speed += speed * 0.3
             else:
                 self.speed += speed * 0.5
 
@@ -142,7 +144,6 @@ def game():
     flag = False
 
     while running_game:
-        #print(clock.get_fps())
         if random.randint(0, 100) == 1:
             CARS.append(Car(random.randint(int(X * 0.4), int(X * 0.6)), random.randint(0, int(Y * 0.2)), TEXTURES['car1']))
 
@@ -153,6 +154,10 @@ def game():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pause()
+                    mw.blit(w_background, (0, 0))
+                    mw.blit(w_hills, (0, Y * 0.5))
+                    mw.blit(w_cars, (0, Y * 0.6))
+                    pygame.display.flip()
 
             if event.type == pygame.QUIT:
                 running_game = False
@@ -162,14 +167,12 @@ def game():
         if keys[pygame.K_w] or keys[pygame.K_UP]:
             player.set_speed(player.speed / (k * 1.5))
             player.set_way(1)
-            player.move(0, 0)
             player.set_time(0.16)
             flag = True
 
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             player.set_speed(-player.speed / (k * 0.5))
             player.set_way(1)
-            player.move(0, 0)
             player.set_time(0.16)
             flag = True
 
@@ -211,16 +214,25 @@ def pause():
     global running_game, running_game
 
     running_pause = True
+
     pause_menu = pygame.Rect((X * 0.3, Y * 0.2), (X * 0.4,  Y * 0.6))
     pause_resume = pygame.Rect((X * 0.35, Y * 0.25), (X * 0.3, Y * 0.1))
     pause_settings = pygame.Rect((X * 0.35, Y * 0.4), (X * 0.3, Y * 0.1))
     pause_exit = pygame.Rect((X * 0.35, Y * 0.55), (X * 0.3, Y * 0.1))
+
+    pause_resume_txt = pygame.font.SysFont('Arial', 40).render('Продолжить', True, (0, 0, 0))
+    pause_settings_txt = pygame.font.SysFont('Arial', 40).render('Настройки', True, (0, 0, 0))
+    pause_exit_txt = pygame.font.SysFont('Arial', 40).render('Выйти', True, (0, 0, 0))
 
     while running_pause:
         pygame.draw.rect(mw, (100, 100, 100), pause_menu)
         pygame.draw.rect(mw, (200, 200, 200), pause_resume)
         pygame.draw.rect(mw, (200, 200, 200), pause_settings)
         pygame.draw.rect(mw, (200, 200, 200), pause_exit)
+
+        mw.blit(pause_resume_txt, (X * 0.45, Y * 0.3))
+        mw.blit(pause_settings_txt, (X * 0.45, Y * 0.45))
+        mw.blit(pause_exit_txt, (X * 0.45, Y * 0.6))
 
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -233,11 +245,10 @@ def pause():
                     pass
 
                 elif pause_exit.collidepoint(xx, yy):
-                    running_pause = False
+                    running_pause = running_game = False
 
             if event.type == pygame.QUIT:
-                running_pause = False
-                running_game = False
+                running_pause = running_game = False
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -245,6 +256,7 @@ def pause():
     mw.blit(w_background, (x_background, y_background))
     mw.blit(w_hills, (0, Y * 0.5))
     mw.blit(w_cars, (0, Y * 0.6))
+    pygame.display.flip()
 
 
 def ride():
@@ -256,13 +268,12 @@ def ride():
 
 
 def turn(x):
-    pass
-    '''global x_background, y_background
-    x_background += x / 2
+    global x_background, y_background
+    x_background += x / 4
     w_background.blit(sprite_background, (0, 0))
     mw.blit(w_background, (x_background, y_background))
     mw.blit(w_hills, (0, Y * 0.5))
-    mw.blit(w_cars, (0, Y * 0.6))'''
+    mw.blit(w_cars, (0, Y * 0.6))
 
 
 player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 300)

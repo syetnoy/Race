@@ -199,7 +199,7 @@ def game():
 
         ride()
         s.fill((255, 255, 255))
-        speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} mp/h    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
+        speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
         s.blit(speedometer, (0, 0))
         mw.blit(s, (0, Y * 0.9))
 
@@ -266,5 +266,5 @@ def turn(x):
 
 
 player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 300)
-road = Animation([a1, a2, a3, a4, a5, a6], 1000)
+road = Animation([a1, a2, a3, a4, a5, a6], 500)
 game()

@@ -139,6 +139,7 @@ class TcpListenner(Thread):
         
         if action == 'join_room':
             self.room_manager.check_user_uid(data['user_uid'])
+            self.room_manager.check_room_uid(data['room_uid'])
             room_uid = self.room_manager.join_room(data['user_uid'], data['room_uid'])
             player = self.room_manager.players[data['user_uid']]
             message = {'room_uid': room_uid}

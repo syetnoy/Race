@@ -91,14 +91,16 @@ class TcpListenner(Thread):
                 continue
 
             request = client.recv(1024)
-            data = json.loads(request)
             self.lock.acquire()
             try:
+                data = json.loads(request)
                 self.route(data, client, addr)
             except (RoomNotRegistered, RoomIsFull, PlayerNotInRoom, LimitMaxRooms) as error:
                 player = self.room_manager.players[data['user_uid']]
                 player.send_tcp(False, {'Error': error.__dict__}, client)
             except UserNotRegistered:
+                pass
+            except json.decoder.JSONDecodeError:
                 pass
             finally:
                 self.lock.release()
@@ -117,7 +119,7 @@ class TcpListenner(Thread):
         if action == 'send_data':
             self.room_manager.check_user_uid(data['user_uid'])
             player = self.room_manager.players[data['user_uid']]
-            player.parameters = data['data']
+            manage_data(player, data['data'])
             return
         
         if action == 'get_data':
@@ -171,5 +173,12 @@ class TcpListenner(Thread):
             return
 
 
+def manage_data(player, data):
+    speed = player.parameters['speed']
+    player.parameters['speed'] = max(min(speed + data['up'] * 0.02 - data['down'] * 0.02 - 0.01 * bool(int(speed)), 127), -34)
+    player.parameters['pos_on_road'] = max(min(player.parameters['pos_on_road'] + -0.01 * data['left'] + 0.01 * data['right'], 1), -1)
+    player.parameters['lenght'] += 0.001 * player.parameters['speed']
+
+
 if __name__ == "__main__":
-    main_loop('127.0.0.1', 5555, Rooms(4))
+    main_loop('127.0.0.1', 5555, Rooms(100))

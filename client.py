@@ -1,5 +1,7 @@
 import socket
 import json
+import keyboard
+import time
 
 class Client:
     def __init__(self, server_host, server_port) -> None:
@@ -115,8 +117,39 @@ if __name__ == '__main__':
     cl2.set_name('admin')
     cl.create_room()
     cl2.join_room(cl.room_uid)
+    width = 50
+    pos = lambda scale: int(width / 2 * (1 + scale))
+
+    BUTTON_UP1 = BUTTON_UP2 = False
+    BUTTON_DOWN1 = BUTTON_DOWN2 = False 
+    BUTTON_LEFT1 = BUTTON_LEFT2 = False
+    BUTTON_RIGHT1 = BUTTON_RIGHT2 = False
+
+    buttons = {
+        'w': BUTTON_UP1,
+        'a': BUTTON_LEFT1,
+        's': BUTTON_DOWN1,
+        'd': BUTTON_RIGHT1,
+        'i': BUTTON_UP2,
+        'j': BUTTON_LEFT2,
+        'k': BUTTON_DOWN2,
+        'l': BUTTON_RIGHT2
+    }
+
+    def hook(e):
+        if e.name in 'wasdijkl':
+            buttons[e.name] = not buttons[e.name]
+    
+    keyboard.hook(hook)
 
     while True:
-        print(cl2.get_data())
-        if input('press sth ... ') == ':q!':
-            cl2.leave_room()
+        cl2.send_data({'up': buttons['w'], 'down': buttons['s'], 'left': buttons['a'], 'right': buttons['d']})
+        cl.send_data({'up': buttons['i'], 'down': buttons['k'], 'left': buttons['j'], 'right': buttons['l']})
+        # print(cl2.get_data())
+        road = ['_'] * (width + 1)
+        for data in cl2.get_data():
+            road[pos(data['pos_on_road'])] = '0'
+        print('\r', ''.join(road), sep='', end='')
+        time.sleep(0.05)
+    
+    keyboard.wait()

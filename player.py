@@ -10,10 +10,11 @@ class Player:
 
         self.parameters = {
             'name': name,
-            'position': (100, 100),
+            'lenght': 0,
+            'pos_on_road': 0,
             'speed': 0,
             'is_go_left': False,
-            'is_go_right': False
+            'is_go_right': False,
         }
     
     def send_tcp(self, status, data, sock):

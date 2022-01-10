@@ -11,6 +11,7 @@ class Player:
         self.parameters = {
             'name': name,
             'position': (100, 100),
+            'speed': 0,
             'is_go_left': False,
             'is_go_right': False
         }

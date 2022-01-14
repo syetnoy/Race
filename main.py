@@ -1,8 +1,11 @@
 import pygame
 import random
+import json
+from Race import client
 
 
 pygame.init()
+
 sizes = pygame.display.get_desktop_sizes()
 X, Y = sizes[0][0], sizes[0][1]
 mw = pygame.display.set_mode((X, Y), pygame.SRCALPHA)
@@ -45,6 +48,11 @@ TEXTURES = {
 }
 
 CARS = []
+
+Client = client.Client('127.0.0.1', 5555)
+Client.create_room()
+
+b_UP = b_DOWN = b_LEFT = b_RIGHT = False
 
 
 class Car:
@@ -96,7 +104,6 @@ class Car:
 
         if self.speed + speed < 1:
             self.speed = 1
-        #print(speed, self.speed)
 
     def set_max_speed(self, max_speed):
         self.max_speed = max_speed
@@ -139,11 +146,13 @@ class Animation(pygame.sprite.Sprite):
 
 def game():
     global running_game
+    b_UP = b_DOWN = b_LEFT = b_RIGHT = False
 
     mw.blit(sprite_background, (0, 0))
     flag = False
 
     while running_game:
+
         if random.randint(0, 100) == 1:
             CARS.append(Car(random.randint(int(X * 0.4), int(X * 0.6)), random.randint(0, int(Y * 0.2)), TEXTURES['car1']))
 
@@ -169,12 +178,14 @@ def game():
             player.set_way(1)
             player.set_time(0.16)
             flag = True
+            b_UP = True
 
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             player.set_speed(-player.speed / (k * 0.5))
             player.set_way(1)
             player.set_time(0.16)
             flag = True
+            b_DOWN = True
 
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             player.set_speed(-player.speed / (k * 2))
@@ -182,6 +193,7 @@ def game():
             player.move(-10, 0)
             player.set_time(0.16)
             flag = True
+            b_LEFT = True
 
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             player.set_speed(-player.speed / (k * 2))
@@ -189,6 +201,7 @@ def game():
             player.move(10, 0)
             player.set_time(0.16)
             flag = True
+            b_RIGHT = True
 
         if not flag:
             player.set_speed(-player.speed / (k * 5))
@@ -205,6 +218,16 @@ def game():
         speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
         s.blit(speedometer, (0, 0))
         mw.blit(s, (0, Y * 0.9))
+
+        for obj in Client.get_data():
+            mw.blit(sprite_car12, (obj['pos_on_road'] * 300 + X * 0.5 - 0.5 * sprite_car12.get_rect()[2], Y * 0.75))
+
+        Client.send_data({'up': b_UP,
+                          'down': b_DOWN,
+                          'left': b_LEFT,
+                          'right': b_RIGHT})
+
+        b_UP = b_DOWN = b_LEFT = b_RIGHT = False
 
         pygame.display.flip()
         clock.tick(FPS)

@@ -21,7 +21,7 @@ def main_loop(tcp_host, tcp_port, room_manager):
     print('| quit - correctly ends server  |')
     print('+-------------------------------+')
 
-    tcp_listenner = TcpListenner('127.0.0.1', 5555, lock, room_manager)
+    tcp_listenner = TcpListenner(tcp_host, tcp_port, lock, room_manager)
     tcp_listenner.start()
 
     while is_running:

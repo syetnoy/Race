@@ -126,7 +126,7 @@ class TcpListenner(Thread):
             self.room_manager.check_user_uid(data['user_uid'])
             self.room_manager.check_room_uid(data['room_uid'])
             room = self.room_manager.rooms[data['room_uid']]
-            message = [player.get_parameters() for player in room.players]
+            message = [player.get_parameters() for player in sorted(room.players, key=lambda player: player.uid != data['user_uid'])]
             player = self.room_manager.players[data['user_uid']]
             player.send_tcp(True, message, client)
             return
@@ -177,7 +177,7 @@ def manage_data(player, data):
     speed = player.parameters['speed']
     player.parameters['speed'] = max(min(speed + data['up'] * 0.02 - data['down'] * 0.02 - 0.01 * bool(int(speed)), 127), -34)
     player.parameters['pos_on_road'] = max(min(player.parameters['pos_on_road'] + -0.01 * data['left'] + 0.01 * data['right'], 1), -1)
-    player.parameters['lenght'] += 0.001 * player.parameters['speed']
+    player.parameters['lenght'] += 0.01 * player.parameters['speed']
 
 
 if __name__ == "__main__":

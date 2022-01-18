@@ -3,7 +3,6 @@ import random
 import json
 from Race import client
 
-
 # TODO:
 #  menu
 #  class button
@@ -34,7 +33,7 @@ for i in range(1, 7):
 
 sprite_background = pygame.image.load('background.png').convert_alpha()
 sprite_background = pygame.transform.scale(sprite_background, (X, Y))
-
+w_background.blit(sprite_background, (0, 0))
 x_background, y_background = 0, 0
 
 sprite_ground = pygame.image.load('ground.png').convert_alpha()
@@ -64,37 +63,6 @@ class Car:
     def __init__(self, x, y, sprite, speed=2, max_speed=100):
         self.x, self.y = x, y
         self.sprite, self.speed, self.max_speed = sprite, speed, max_speed
-
-        # w_hills.blit(sprite_ground, (0, 0))
-        '''w_hills.blit(sprite_road, (X * 0.25, 0))
-
-        w_cars.fill((0, 0, 0))
-        w_cars.blit(player.sprite[player.way], (player.x, player.y))
-
-        mw.blit(w_hills, (0, Y * 0.5))
-        mw.blit(w_cars, (0, Y * 0.6))'''
-
-    def set_speed(self, speed):
-        if self.speed + speed <= self.max_speed:
-            if self.speed < self.max_speed / 5:
-                self.speed += speed * 2
-            elif self.speed < self.max_speed / 4:
-                self.speed += speed * 1
-            elif self.speed < self.max_speed / 3:
-                self.speed += speed * 0.8
-            elif self.speed > self.max_speed / 5 * 4:
-                self.speed += speed * 0.3
-            else:
-                self.speed += speed * 0.5
-
-        else:
-            self.speed = self.max_speed
-
-        if self.speed + speed < 1:
-            self.speed = 1
-
-    def set_way(self, way):
-        self.way = way
 
 
 class Button(pygame.Rect):
@@ -127,11 +95,13 @@ class Animation(pygame.sprite.Sprite):
 
 
 def game():
-    global running_game
+    global running_game, w_cars
     global b_UP, b_DOWN, b_LEFT, b_RIGHT
 
     mw.blit(sprite_background, (0, 0))
     flag = False
+
+    distance_render = 300
 
     while running_game:
         for event in pygame.event.get():
@@ -165,25 +135,50 @@ def game():
 
         flag = False
 
+        mw.blit(w_background, (0, 0))
+        # mw.blit(w_hills, (0, Y * 0.5))
+        mw.blit(road.image, (0, Y * 0.6))
+
         s.fill((255, 255, 255))
-        speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
+        speedometer = pygame.font.SysFont('Arial', 40).render(
+            f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
         s.blit(speedometer, (0, 0))
         mw.blit(s, (0, Y * 0.9))
 
         if online:
             data = client_.get_data()
+            player_auto = data[0]
             for obj in data:
-                if 100 > obj['lenght'] - data[0]['lenght'] > 0:
-                    mw.blit(sprite_car12, (obj['pos_on_road'] * 300 + X * 0.5 - 0.5 * sprite_car12.get_rect()[2], Y * 0.75))
+                if 100 > obj['length'] - player_auto['length'] >= 0:
+                    sprite = None
+                    if obj['is_go_right']: sprite = sprite_car13
+                    elif obj['is_go_left']: sprite = sprite_car11
+                    else: sprite = sprite_car12
+
+                    # Тут должна быть формула вычисления размера машинки, пока я не могу её вывести
+                    K = distance_render - (obj['length'] - player_auto['length'])
+                    aspect = (distance_render / K)
+                    sprite = pygame.transform.scale(sprite, (aspect * sprite.get_width(), aspect * sprite.get_height()))
+
+                    # sprite = pygame.transform.scale(sprite, (sprite.get_width() * K, sprite.get_height() * K))
+
+                    mw.blit(sprite, (obj['pos_on_road'] * 300 + X * 0.5 - 0.5 * sprite_car12.get_rect()[2],
+                                     max((Y * 0.8 * aspect), Y * 0.55)))
+            w_cars.blit(sprite_car12, (X * 0.5 + (100 * data[0]['pos_on_road']), Y * 0.75))
 
             client_.send_data({'up': b_UP,
-                              'down': b_DOWN,
-                              'left': b_LEFT,
-                              'right': b_RIGHT})
+                               'down': b_DOWN,
+                               'left': b_LEFT,
+                               'right': b_RIGHT})
 
             b_UP = b_DOWN = b_LEFT = b_RIGHT = False
+        '''mw.blit(w_background, (0, 0))
+        mw.blit(w_hills, (0, Y * 0.5))
+        mw.blit(w_cars, (0, Y * 0.6))'''
 
         pygame.display.flip()
+        mw.fill((0, 0, 0))
+        w_cars.fill((0, 0, 0))
         clock.tick(FPS)
 
 
@@ -219,7 +214,7 @@ def pause():
 
     running_pause = True
 
-    pause_menu = pygame.Rect((X * 0.3, Y * 0.2), (X * 0.4,  Y * 0.6))
+    pause_menu = pygame.Rect((X * 0.3, Y * 0.2), (X * 0.4, Y * 0.6))
     pause_resume = pygame.Rect((X * 0.35, Y * 0.25), (X * 0.3, Y * 0.1))
     pause_settings = pygame.Rect((X * 0.35, Y * 0.4), (X * 0.3, Y * 0.1))
     pause_exit = pygame.Rect((X * 0.35, Y * 0.55), (X * 0.3, Y * 0.1))
@@ -266,8 +261,8 @@ def pause():
 def server_connect():
     try:
         global client_, online
-        client_ = client.Client('192.168.0.124', 5555)
-        client_.join_room(client_.get_rooms()[0]['room_uid'])
+        client_ = client.Client('192.168.0.121', 5555)
+        client_.join_room()
         online = True
         return True
     except ConnectionRefusedError:

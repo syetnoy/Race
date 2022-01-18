@@ -141,7 +141,6 @@ class TcpListenner(Thread):
         
         if action == 'join_room':
             self.room_manager.check_user_uid(data['user_uid'])
-            self.room_manager.check_room_uid(data['room_uid'])
             room_uid = self.room_manager.join_room(data['user_uid'], data['room_uid'])
             player = self.room_manager.players[data['user_uid']]
             message = {'room_uid': room_uid}
@@ -177,8 +176,10 @@ def manage_data(player, data):
     speed = player.parameters['speed']
     player.parameters['speed'] = max(min(speed + data['up'] * 0.02 - data['down'] * 0.02 - 0.01 * bool(int(speed)), 127), -34)
     player.parameters['pos_on_road'] = max(min(player.parameters['pos_on_road'] + -0.01 * data['left'] + 0.01 * data['right'], 1), -1)
-    player.parameters['lenght'] += 0.01 * player.parameters['speed']
+    player.parameters['length'] += 0.01 * player.parameters['speed']
+    player.parameters['is_go_left'] = data['left']
+    player.parameters['is_go_right'] = data['right']
 
 
 if __name__ == "__main__":
-    main_loop('127.0.0.1', 5555, Rooms(100))
+    main_loop('192.168.0.121', 5555, Rooms(100))

@@ -1,8 +1,18 @@
 import pygame
 import random
+import json
+from Race import client
+
+# TODO:
+#  menu
+#  class button
+#  group of sprites
+#  music
+#  voice phrases
 
 
 pygame.init()
+
 sizes = pygame.display.get_desktop_sizes()
 X, Y = sizes[0][0], sizes[0][1]
 mw = pygame.display.set_mode((X, Y), pygame.SRCALPHA)
@@ -15,16 +25,15 @@ w_cars.set_colorkey((0, 0, 0), pygame.RLEACCEL)
 
 s = pygame.Surface((X * 0.2, Y * 0.1))
 
-running_game = True
+running_game = running_menu = True
 FPS = 60
-k = 150
 
 for i in range(1, 7):
     exec(f'a{i} = pygame.transform.scale(pygame.image.load("a{i}.png").convert_alpha(), (X, Y))')
 
 sprite_background = pygame.image.load('background.png').convert_alpha()
 sprite_background = pygame.transform.scale(sprite_background, (X, Y))
-
+w_background.blit(sprite_background, (0, 0))
 x_background, y_background = 0, 0
 
 sprite_ground = pygame.image.load('ground.png').convert_alpha()
@@ -46,76 +55,24 @@ TEXTURES = {
 
 CARS = []
 
+client_, online = None, False
+b_UP = b_DOWN = b_LEFT = b_RIGHT = False
+
 
 class Car:
-    def __init__(self, x, y, sprite, speed=2, max_speed=100, way=1, time=1):
+    def __init__(self, x, y, sprite, speed=2, max_speed=100):
         self.x, self.y = x, y
-        self.sprite, self.speed, self.max_speed, self.way, self.time = sprite, speed, max_speed, way, time
-
-    def move(self, x, y):
-        if self.x >= X * 0.7:
-            self.set_speed(-5)
-            if x < 0:
-                self.x += x
-                turn(-2)
-        elif self.x <= X * 0.1:
-            self.set_speed(-5)
-            if x > 0:
-                self.x += x
-                turn(2)
-        else:
-            if x > 0: turn(-2)
-            else: turn(2)
-            self.x += x
-            self.y += y
-
-        # w_hills.blit(sprite_ground, (0, 0))
-        w_hills.blit(sprite_road, (X * 0.25, 0))
-
-        w_cars.fill((0, 0, 0))
-        w_cars.blit(player.sprite[player.way], (player.x, player.y))
-
-        mw.blit(w_hills, (0, Y * 0.5))
-        mw.blit(w_cars, (0, Y * 0.6))
-
-    def set_speed(self, speed):
-        if self.speed + speed <= self.max_speed:
-            if self.speed < self.max_speed / 5:
-                self.speed += speed * 2
-            elif self.speed < self.max_speed / 4:
-                self.speed += speed * 1
-            elif self.speed < self.max_speed / 3:
-                self.speed += speed * 0.8
-            elif self.speed > self.max_speed / 5 * 4:
-                self.speed += speed * 0.3
-            else:
-                self.speed += speed * 0.5
-
-        else:
-            self.speed = self.max_speed
-
-        if self.speed + speed < 1:
-            self.speed = 1
-        #print(speed, self.speed)
-
-    def set_max_speed(self, max_speed):
-        self.max_speed = max_speed
-
-    def set_way(self, way):
-        self.way = way
-
-    def set_time(self, time):
-        self.time += time
+        self.sprite, self.speed, self.max_speed = sprite, speed, max_speed
 
 
-class Player:
-    def __init__(self, id, x_road, y_road, distance=0):
-        self.id = id
-        self.x_road, self.y_road = x_road, y_road
-        self.distance = distance
+class Button(pygame.Rect):
+    def __init__(self, x, y, width, height, sprite):
+        super().__init__(x, y, width, height)
+        self.x, self.y, self.width, self.height = x, y, width, height
+        self.sprite = sprite
 
-    def set_distance(self, distance):
-        self.distance += distance
+    def my(self):
+        print('you clicked on this button')
 
 
 class Animation(pygame.sprite.Sprite):
@@ -138,15 +95,13 @@ class Animation(pygame.sprite.Sprite):
 
 
 def game():
-    global running_game
+    global running_game, w_cars, CARS
+    global b_UP, b_DOWN, b_LEFT, b_RIGHT
 
     mw.blit(sprite_background, (0, 0))
-    flag = False
+    distance_render = 500
 
     while running_game:
-        if random.randint(0, 100) == 1:
-            CARS.append(Car(random.randint(int(X * 0.4), int(X * 0.6)), random.randint(0, int(Y * 0.2)), TEXTURES['car1']))
-
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pass
@@ -165,46 +120,90 @@ def game():
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_w] or keys[pygame.K_UP]:
-            player.set_speed(player.speed / (k * 1.5))
-            player.set_way(1)
-            player.set_time(0.16)
-            flag = True
+            b_UP = True
 
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            player.set_speed(-player.speed / (k * 0.5))
-            player.set_way(1)
-            player.set_time(0.16)
-            flag = True
+            b_DOWN = True
 
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            player.set_speed(-player.speed / (k * 2))
-            player.set_way(0)
-            player.move(-10, 0)
-            player.set_time(0.16)
-            flag = True
+            b_LEFT = True
 
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            player.set_speed(-player.speed / (k * 2))
-            player.set_way(2)
-            player.move(10, 0)
-            player.set_time(0.16)
-            flag = True
+            b_RIGHT = True
 
-        if not flag:
-            player.set_speed(-player.speed / (k * 5))
-            player.time = 1
-            player.set_way(1)
+        mw.blit(w_background, (0, 0))
+        # mw.blit(w_hills, (0, Y * 0.5))
+        mw.blit(road.image, (0, Y * 0.6))
 
-        flag = False
-        '''for car in CARS:
-            w_cars.blit(car.sprite[car.way], (car.x, car.y))
-        mw.blit(w_cars, (0, Y * 0.6))'''
-
-        ride()
         s.fill((255, 255, 255))
-        speedometer = pygame.font.SysFont('Arial', 40).render(f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
+        speedometer = pygame.font.SysFont('Arial', 40).render(
+            f'{int(player.speed)} км/ч    {int(clock.get_fps())}/{FPS}fps', True, (139, 16, 200))
         s.blit(speedometer, (0, 0))
         mw.blit(s, (0, Y * 0.9))
+
+        if online:
+            CARS = client_.get_data()
+            player_auto = CARS[0]
+            for obj in CARS:
+                if distance_render > obj['length'] - player_auto['length'] >= 0:
+                    if obj['is_go_right']:
+                        sprite = sprite_car13
+                    elif obj['is_go_left']:
+                        sprite = sprite_car11
+                    else:
+                        sprite = sprite_car12
+
+                    K = distance_render - (obj['length'] - player_auto['length'])
+                    aspect = (distance_render / K)
+                    sprite = pygame.transform.scale(sprite, (aspect * sprite.get_width(), aspect * sprite.get_height()))
+
+                    # sprite = pygame.transform.scale(sprite, (sprite.get_width() * K, sprite.get_height() * K))
+
+                    position = (obj['pos_on_road'] * 300 + X * 0.5 - 0.5 * sprite.get_rect()[2], Y * 0.8 * aspect)
+                    print(position[1])
+                    mw.blit(sprite, position)
+                    mw.blit(pygame.font.SysFont('Arial', 20).render(obj['name'], True, 'white'), (position[0] + 50,
+                                                                                                  position[1]))
+            w_cars.blit(sprite_car12, (X * 0.5 + (100 * CARS[0]['pos_on_road']), Y * 0.75))
+
+            client_.send_data({'up': b_UP,
+                               'down': b_DOWN,
+                               'left': b_LEFT,
+                               'right': b_RIGHT})
+
+            b_UP = b_DOWN = b_LEFT = b_RIGHT = False
+        '''mw.blit(w_background, (0, 0))
+        mw.blit(w_hills, (0, Y * 0.5))
+        mw.blit(w_cars, (0, Y * 0.6))'''
+
+        pygame.display.flip()
+        mw.fill((0, 0, 0))
+        w_cars.fill((0, 0, 0))
+        clock.tick(FPS)
+
+
+def menu():
+    global running_menu
+    b = pygame.Rect(100, 100, 100, 100)
+    c = pygame.Rect(300, 300, 100, 100)
+    d = Button(500, 500, 100, 100, a4)
+    mw.blit(a1, (0, 0))
+    mw.blit(d.sprite, (d.x, d.y))
+    pygame.draw.rect(mw, (0, 0, 255), b), pygame.draw.rect(mw, (0, 255, 0), c)
+
+    while running_menu:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if b.collidepoint(event.pos):
+                    game()
+                if c.collidepoint(event.pos):
+                    if server_connect():
+                        game()
+                    else:
+                        print('no connection')
+                if d.collidepoint(event.pos):
+                    d.my()
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -215,7 +214,7 @@ def pause():
 
     running_pause = True
 
-    pause_menu = pygame.Rect((X * 0.3, Y * 0.2), (X * 0.4,  Y * 0.6))
+    pause_menu = pygame.Rect((X * 0.3, Y * 0.2), (X * 0.4, Y * 0.6))
     pause_resume = pygame.Rect((X * 0.35, Y * 0.25), (X * 0.3, Y * 0.1))
     pause_settings = pygame.Rect((X * 0.35, Y * 0.4), (X * 0.3, Y * 0.1))
     pause_exit = pygame.Rect((X * 0.35, Y * 0.55), (X * 0.3, Y * 0.1))
@@ -259,23 +258,21 @@ def pause():
     pygame.display.flip()
 
 
-def ride():
-    road.update(player.speed)
-    w_hills.blit(road.image, (0, 0))
-    w_hills.blit(sprite_road, (X * 0.25, 0))
-    mw.blit(w_hills, (0, Y * 0.5))
-    mw.blit(w_cars, (0, Y * 0.6))
-
-
-def turn(x):
-    global x_background, y_background
-    x_background += x / 4
-    w_background.blit(sprite_background, (0, 0))
-    mw.blit(w_background, (x_background, y_background))
-    mw.blit(w_hills, (0, Y * 0.5))
-    mw.blit(w_cars, (0, Y * 0.6))
+def server_connect():
+    try:
+        global client_, online
+        client_ = client.Client('192.168.0.121', 5555)
+        client_.create_room()
+        online = True
+        return True
+    except ConnectionRefusedError:
+        print('aboba')
+        return False
+    except TimeoutError:
+        print('amoma')
+        return False
 
 
 player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 300)
 road = Animation([a1, a2, a3, a4, a5, a6], 500)
-game()
+menu()

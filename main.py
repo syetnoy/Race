@@ -1,7 +1,8 @@
 import pygame
 import random
 import json
-from Race import client
+from Race.client import Client
+from menu import *
 
 # TODO:
 #  menu
@@ -11,69 +12,10 @@ from Race import client
 #  voice phrases
 
 
-pygame.init()
-
-sizes = pygame.display.get_desktop_sizes()
-X, Y = sizes[0][0], sizes[0][1]
-mw = pygame.display.set_mode((X, Y), pygame.SRCALPHA)
-clock = pygame.time.Clock()
-
-w_background = pygame.Surface((X, Y))
-w_hills = pygame.Surface((X, Y * 0.5))
-w_cars = pygame.Surface((X, Y * 0.4))
-w_cars.set_colorkey((0, 0, 0), pygame.RLEACCEL)
-
-s = pygame.Surface((X * 0.2, Y * 0.1))
-
-running_game = running_menu = True
-FPS = 60
-
-for i in range(1, 7):
-    exec(f'a{i} = pygame.transform.scale(pygame.image.load("a{i}.png").convert_alpha(), (X, Y))')
-
-sprite_background = pygame.image.load('background.png').convert_alpha()
-sprite_background = pygame.transform.scale(sprite_background, (X, Y))
-w_background.blit(sprite_background, (0, 0))
-x_background, y_background = 0, 0
-
-sprite_ground = pygame.image.load('ground.png').convert_alpha()
-sprite_ground = pygame.transform.scale(sprite_ground, (X, Y * 0.5))
-
-sprite_road = pygame.image.load('road5.png').convert_alpha()
-sprite_road = pygame.transform.scale(sprite_road, (X * 0.5, Y * 0.5))
-
-sprite_car11 = pygame.image.load('car11.png').convert_alpha()
-sprite_car11 = pygame.transform.scale(sprite_car11, (X * 0.2, Y * 0.3))
-sprite_car12 = pygame.image.load('car12.png').convert_alpha()
-sprite_car12 = pygame.transform.scale(sprite_car12, (X * 0.2, Y * 0.3))
-sprite_car13 = pygame.image.load('car13.png').convert_alpha()
-sprite_car13 = pygame.transform.scale(sprite_car13, (X * 0.2, Y * 0.3))
-
-TEXTURES = {
-    'car1': [sprite_car11, sprite_car12, sprite_car13]
-}
-
-CARS = []
-
-client_, online = None, False
-b_UP = b_DOWN = b_LEFT = b_RIGHT = False
-
-
 class Car:
     def __init__(self, x, y, sprite, speed=2, max_speed=100):
         self.x, self.y = x, y
         self.sprite, self.speed, self.max_speed = sprite, speed, max_speed
-
-
-class Button(pygame.Rect):
-    def __init__(self, x, y, width, height, sprite):
-        super().__init__(x, y, width, height)
-        self.x, self.y, self.width, self.height = x, y, width, height
-        self.sprite = sprite
-
-    def my(self):
-        print('you clicked on this button')
-
 
 class Animation(pygame.sprite.Sprite):
     def __init__(self, images, time_interval, index=0):
@@ -258,11 +200,19 @@ def pause():
     pygame.display.flip()
 
 
+client = None
+online = False
+
+CarGoRight0 = pygame.image.load('car13.png')
+CarGoFront0 = pygame.image.load('car12.png')
+CarGoLeft0 = pygame.image.load('car11.png')
+
+
 def server_connect():
     try:
-        global client_, online
-        client_ = client.Client('192.168.0.121', 5555)
-        client_.join_room()
+        global client, online
+        client = Client('192.168.0.173', 5555)
+        client.join_room()
         online = True
         return True
     except ConnectionRefusedError:
@@ -273,6 +223,89 @@ def server_connect():
         return False
 
 
-player = Car(X * 0.4, Y * 0.1, TEXTURES['car1'], 5, 300)
-road = Animation([a1, a2, a3, a4, a5, a6], 500)
-menu()
+def main():
+    global client, online
+    pygame.init()
+
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    clock = pygame.time.Clock()
+    FPS = 100
+    X, Y = pygame.display.get_window_size()
+    is_running = True
+    
+    # Loading images
+    StartButton = pygame.image.load('StartButton.png')
+    ExitButton = pygame.image.load('ExitButton.jpg')
+    ExitButton = ExitButton.convert_alpha()
+    ExitButton.set_colorkey('white')
+
+    # game process
+    def process(screen):
+        global CarGoLeft0, CarGoRight0, CarGoFront0
+        distance_render = 300
+        screen.image.fill((0, 0, 0))
+        K_UP, K_DOWN, K_LEFT, K_RIGHT = False, False, False, False
+
+        keys = pygame.key.get_pressed()
+        K_UP = keys[pygame.K_UP] or keys[pygame.K_w]
+        K_DOWN = keys[pygame.K_DOWN] or keys[pygame.K_s]
+        K_LEFT = keys[pygame.K_LEFT] or keys[pygame.K_a]
+        K_RIGHT = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+        
+        if online:
+            data = client.get_data()
+            me = data[0]
+            print(me)
+            for obj in data:
+                if distance_render > obj['length'] - me['length'] >= 0 or True:
+                    if obj['is_go_right']: sprite = CarGoRight0
+                    elif obj['is_go_left']: sprite = CarGoLeft0
+                    else: sprite = CarGoFront0
+
+                    k = distance_render - (obj['length'] - me['length'])
+                    aspect = distance_render / k
+                    if aspect <= 0: continue
+                    sprite = pygame.transform.scale(sprite, (sprite.get_width() * aspect, sprite.get_height() * aspect))
+                    
+                    screen.image.blit(sprite,
+                            (obj['pos_on_road'] * 300 * aspect + X * 0.5 - sprite.get_width() / 2, Y * 0.7 * aspect))
+                    screen.image.blit(pygame.font.SysFont('Calibri', 12).render(obj['name'], 1, 'white'),
+                            (obj['pos_on_road'] * 300 + X * 0.5 - 30, Y * 0.7 * aspect + 60))
+            screen.image.blit(pygame.font.SysFont('Calibri', 20).render(str(obj['speed']), 1, 'black', 'white'), (0, Y * 0.8))
+            client.send_data({'up': K_UP, 'down': K_DOWN, 'left': K_LEFT, 'right': K_RIGHT})
+
+
+    
+    pages = PageControl()
+
+    menu = Page()
+    pages.add_page('menu', menu)
+    pages.set_current_page('menu')
+
+    Button(pages.get_current_page(), StartButton, target=lambda: pages.set_current_page('game')).set_geometry(X * 0.45, Y * 0.55, X * 0.1, Y * 0.1)
+    Button(pages.get_current_page(), ExitButton, target=lambda: sys.exit()).set_geometry(X * 0.97, Y * 0.01, X * 0.02, Y * 0.02)
+
+    game = GamePage(process)
+
+    game_window = pygame.sprite.Sprite(game)
+    game_window.image = pygame.surface.Surface((X, Y))
+    game_window.rect = game_window.image.get_rect()
+    print(game_window.rect)
+
+    pages.add_page('game', game)
+
+    print(pages.get_pages())
+    
+    while is_running:
+        screen.fill('black')
+        for e in pygame.event.get():
+            pages.event_handler(e)
+        pages.get_current_page().update()
+        pages.get_current_page().draw(screen)
+        clock.tick(FPS)
+        pygame.display.flip()
+
+
+if __name__ == '__main__':
+    server_connect()
+    main()
